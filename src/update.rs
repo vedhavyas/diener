@@ -10,6 +10,8 @@ enum Rewrite {
     All,
     Substrate(Option<String>),
     Polkadot(Option<String>),
+    GrandpaBridgeGadget(Option<String>),
+    Cumulus(Option<String>),
 }
 
 /// The version the dependencies should be switched to.
@@ -34,6 +36,14 @@ pub struct Update {
     /// Only alter Polkadot dependencies.
     #[structopt(long, short = "p")]
     polkadot: bool,
+
+    /// Only alter grandpa bridge gadget dependencies.
+    #[structopt(long, short = "g")]
+    grandpa: bool,
+
+    /// Only alter cumulus dependencies.
+    #[structopt(long, short = "c")]
+    cumulus: bool,
 
     /// The `branch` that the dependencies should use.
     #[structopt(long, conflicts_with_all = &[ "rev", "tag" ])]
@@ -65,7 +75,7 @@ impl Update {
             return Err("You need to pass `--branch`, `--tag` or `--rev`".into());
         };
 
-        let rewrite = if self.substrate == self.polkadot {
+        let rewrite = if !(self.substrate || self.polkadot || self.grandpa || self.cumulus) {
             if self.git.is_some() {
                 return Err("You need to pass `--substrate` or `--polkadot` for `--git`.".into());
             } else {
@@ -73,8 +83,12 @@ impl Update {
             }
         } else if self.substrate {
             Rewrite::Substrate(self.git)
-        } else {
+        } else if self.polkadot {
             Rewrite::Polkadot(self.git)
+        } else if self.grandpa {
+            Rewrite::GrandpaBridgeGadget(self.git)
+        } else {
+            Rewrite::Cumulus(self.git)
         };
 
         Ok((rewrite, version, self.path))
@@ -117,6 +131,8 @@ fn handle_dependency(dep: &mut InlineTable, rewrite: &Rewrite, version: &Version
         Rewrite::All => &None,
         Rewrite::Substrate(new_git) if git.name == "substrate" => new_git,
         Rewrite::Polkadot(new_git) if git.name == "polkadot" => new_git,
+        Rewrite::GrandpaBridgeGadget(new_git) if git.name == "grandpa-bridge-gadget" => new_git,
+        Rewrite::Cumulus(new_git) if git.name == "cumulus" => new_git,
         _ => return,
     };
 
